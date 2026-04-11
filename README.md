@@ -1,6 +1,6 @@
-# 🔌 local-mcp-server
+# 💸 Expense Tracker MCP Server
 
-A locally hosted **Model Context Protocol (MCP)** server that exposes tools and resources to AI assistants like Claude. This server enables seamless integration between large language models and your local data, services, or APIs.
+A local **Model Context Protocol (MCP)** server built with [FastMCP](https://github.com/jlowin/fastmcp) that lets AI assistants like **Claude** manage your personal expenses — add entries, list them by date range, and get category-wise summaries — all stored in a local SQLite database.
 
 ---
 
@@ -8,47 +8,61 @@ A locally hosted **Model Context Protocol (MCP)** server that exposes tools and 
 
 - [Overview](#overview)
 - [Features](#features)
+- [Project Structure](#project-structure)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Available Tools](#available-tools)
-- [Project Structure](#project-structure)
-- [Development](#development)
-- [Troubleshooting](#troubleshooting)
+- [Running the Server](#running-the-server)
+- [Connecting to Claude](#connecting-to-claude)
+- [Tools & Resources](#tools--resources)
+- [Expense Categories](#expense-categories)
+- [Database Schema](#database-schema)
 - [Contributing](#contributing)
-- [License](#license)
 
 ---
 
 ## 🧠 Overview
 
-`local-mcp-server` is a lightweight MCP-compliant server that allows AI models (such as Claude via Claude.ai or the Anthropic API) to interact with tools and data sources running on your local machine or private infrastructure.
+`expense-tracker-server` exposes three MCP tools and one MCP resource to any connected AI client. Claude (or any MCP-compatible assistant) can call these tools directly in conversation to log and query your expenses — no manual spreadsheet needed.
 
-Built on the [Model Context Protocol](https://modelcontextprotocol.io/) standard, it enables structured, tool-based communication between AI assistants and backend services — without exposing sensitive data to the cloud.
+All data is stored locally in `expenses.db` (SQLite), and categories are managed via a simple `categories.json` file that you can edit without restarting the server.
 
 ---
 
 ## ✨ Features
 
-- ✅ Fully MCP-compliant server implementation
-- 🔧 Exposes custom tools callable by AI assistants
-- 💾 Connects to a local database for expense/data tracking
-- 🔒 Runs entirely on your local machine — no external data exposure
-- ⚡ Fast and lightweight — minimal dependencies
-- 🔄 Easy to extend with new tools and resources
+- 🤖 **AI-native** — designed to be called by Claude via MCP
+- 💾 **Local SQLite storage** — your data stays on your machine
+- 📂 **20 expense categories** with subcategories (fully customizable via JSON)
+- 🔧 **FastMCP-powered** — minimal boilerplate, clean tool definitions
+- 🔄 **Live category reload** — edit `categories.json` without restarting
+- 🐍 **Pure Python** — easy to read, extend, and modify
+
+---
+
+## 🗂 Project Structure
+
+```
+expense-tracker-server/
+├── main.py             # FastMCP server — tools & resource definitions
+├── expenses.db         # SQLite database (auto-created on first run)
+├── categories.json     # Expense categories and subcategories
+├── fastmcp.json        # FastMCP module config
+├── pyproject.toml      # Project metadata and dependencies
+├── uv.lock             # Locked dependency versions (uv)
+├── .python-version     # Python version pin
+└── README.md
+```
 
 ---
 
 ## 🛠 Prerequisites
 
-Before you begin, ensure you have the following installed:
-
 | Requirement | Version |
 |-------------|---------|
-| Node.js | `>= 18.x` |
-| npm | `>= 9.x` |
-| Python *(optional)* | `>= 3.9` |
+| Python | `>= 3.14` |
+| [uv](https://github.com/astral-sh/uv) | latest recommended |
+
+> **Why uv?** This project uses `uv` for fast dependency management and virtual environment handling. You can also use plain `pip` if preferred.
 
 ---
 
@@ -61,204 +75,196 @@ git clone https://github.com/anamika-1520/local-mcp-server.git
 cd local-mcp-server
 ```
 
-**2. Install dependencies:**
+**2. Install dependencies using `uv`:**
 
 ```bash
-npm install
+uv sync
 ```
 
-**3. Set up the database (if applicable):**
+Or using `pip`:
 
 ```bash
-npm run db:setup
+pip install fastmcp>=3.2.2
 ```
+
+> The `expenses.db` SQLite database is created automatically when the server starts for the first time.
 
 ---
 
-## ⚙️ Configuration
-
-Create a `.env` file in the root directory by copying the example:
+## 🚀 Running the Server
 
 ```bash
-cp .env.example .env
+uv run main.py
 ```
 
-Edit `.env` to configure your environment:
+Or directly with Python:
 
-```env
-# Server Configuration
-PORT=3000
-HOST=localhost
-
-# Database
-DB_PATH=./data/expenses.db
-
-# MCP Settings
-MCP_SERVER_NAME=local-mcp-server
-MCP_SERVER_VERSION=1.0.0
+```bash
+python main.py
 ```
+
+The server will start and listen for incoming MCP connections.
 
 ---
 
-## 🚀 Usage
+## 🔌 Connecting to Claude
 
-**Start the server:**
+### Claude.ai (Remote MCP)
 
-```bash
-npm start
-```
-
-**Start in development mode (with auto-reload):**
-
-```bash
-npm run dev
-```
-
-The server will start and listen for MCP connections. You can connect it to Claude.ai or any MCP-compatible client by registering the server URL:
-
-```
-http://localhost:3000/mcp/v1
-```
-
-### Connecting to Claude.ai
+If you expose this server via a tunnel (e.g., `ngrok` or `cloudflared`):
 
 1. Go to **Claude.ai → Settings → Integrations**
 2. Click **Add MCP Server**
-3. Enter your server URL: `http://localhost:3000/mcp/v1`
-4. Save and start using your tools in conversations
+3. Enter your server's public URL
+4. Start using the tools in any conversation
 
----
+### Claude Desktop (Local MCP)
 
-## 🧰 Available Tools
+Add the following to your `claude_desktop_config.json`:
 
-The server currently exposes the following tools to connected AI assistants:
-
-### `add_expense`
-Add a new expense entry to the local database.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `amount` | `number` | ✅ | Expense amount |
-| `category` | `string` | ✅ | Category (e.g., Food, Transport) |
-| `date` | `string` | ✅ | Date in `YYYY-MM-DD` format |
-| `note` | `string` | ❌ | Optional note or description |
-| `subcategory` | `string` | ❌ | Optional subcategory |
-
----
-
-### `list_expenses`
-Retrieve all expense entries within a date range.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `start_date` | `string` | ✅ | Start date (`YYYY-MM-DD`) |
-| `end_date` | `string` | ✅ | End date (`YYYY-MM-DD`) |
-
----
-
-### `summarize`
-Get a category-wise summary of expenses within a date range.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `start_date` | `string` | ✅ | Start date (`YYYY-MM-DD`) |
-| `end_date` | `string` | ✅ | End date (`YYYY-MM-DD`) |
-| `category` | `string` | ❌ | Filter by specific category |
-
----
-
-## 🗂 Project Structure
-
-```
-local-mcp-server/
-├── src/
-│   ├── index.js          # Server entry point
-│   ├── tools/            # MCP tool definitions
-│   │   ├── addExpense.js
-│   │   ├── listExpenses.js
-│   │   └── summarize.js
-│   ├── db/               # Database layer
-│   │   ├── schema.js
-│   │   └── queries.js
-│   └── utils/            # Helper utilities
-├── data/                 # Local SQLite database (auto-created)
-├── .env.example          # Environment variable template
-├── package.json
-└── README.md
-```
-
----
-
-## 🧑‍💻 Development
-
-### Running Tests
-
-```bash
-npm test
-```
-
-### Adding a New Tool
-
-1. Create a new file under `src/tools/yourTool.js`
-2. Define the tool schema and handler function
-3. Register the tool in `src/index.js`
-
-**Example tool definition:**
-
-```javascript
-export const yourTool = {
-  name: "your_tool",
-  description: "Description of what your tool does",
-  inputSchema: {
-    type: "object",
-    properties: {
-      param1: { type: "string", description: "A parameter" }
-    },
-    required: ["param1"]
-  },
-  handler: async ({ param1 }) => {
-    // Your logic here
-    return { result: `Processed: ${param1}` };
+```json
+{
+  "mcpServers": {
+    "expense-tracker": {
+      "command": "uv",
+      "args": ["run", "main.py"],
+      "cwd": "/path/to/expense-tracker-server"
+    }
   }
-};
+}
 ```
 
 ---
 
-## 🐛 Troubleshooting
+## 🧰 Tools & Resources
 
-**Server won't start:**
-- Ensure port `3000` is not in use: `lsof -i :3000`
-- Check Node.js version: `node --version` (must be ≥ 18)
+### 🔧 Tool: `add_expense`
 
-**Claude can't connect to the server:**
-- Make sure the server is running before connecting
-- Confirm the MCP URL is correct in Claude settings
-- Check firewall rules if running on a remote machine
+Add a new expense entry to the database.
 
-**Database errors:**
-- Delete `data/expenses.db` and re-run `npm run db:setup` to reset
-- Ensure the `data/` directory has write permissions
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `date` | `string` | ✅ | Date in `YYYY-MM-DD` format |
+| `amount` | `float` | ✅ | Expense amount |
+| `category` | `string` | ✅ | Main category (e.g., `food`, `transport`) |
+| `subcategory` | `string` | ❌ | Subcategory (e.g., `groceries`, `fuel`) |
+| `note` | `string` | ❌ | Optional description or note |
+
+**Example response:**
+```json
+{ "status": "ok", "id": 7 }
+```
+
+---
+
+### 🔧 Tool: `list_expenses`
+
+List all expense entries within an inclusive date range.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `start_date` | `string` | ✅ | Start date (`YYYY-MM-DD`) |
+| `end_date` | `string` | ✅ | End date (`YYYY-MM-DD`) |
+
+**Example response:**
+```json
+[
+  {
+    "id": 1,
+    "date": "2026-04-01",
+    "amount": 500.0,
+    "category": "food",
+    "subcategory": "groceries",
+    "note": "Weekly shop"
+  }
+]
+```
+
+---
+
+### 🔧 Tool: `summarize`
+
+Get a category-wise total of expenses within a date range.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `start_date` | `string` | ✅ | Start date (`YYYY-MM-DD`) |
+| `end_date` | `string` | ✅ | End date (`YYYY-MM-DD`) |
+| `category` | `string` | ❌ | Filter to a single category |
+
+**Example response:**
+```json
+[
+  { "category": "food", "total_amount": 1850.0 },
+  { "category": "transport", "total_amount": 640.0 }
+]
+```
+
+---
+
+### 📦 Resource: `expense://categories`
+
+Returns the full list of categories and subcategories from `categories.json` as `application/json`.
+
+This resource is **read fresh on every call**, so you can update `categories.json` at any time without restarting the server.
+
+---
+
+## 🏷 Expense Categories
+
+The server supports **20 top-level categories**, each with subcategories:
+
+| Category | Example Subcategories |
+|---|---|
+| `food` | groceries, dining_out, delivery_fees, snacks |
+| `transport` | fuel, cab_ride_hailing, public_transport, tolls |
+| `housing` | rent, repairs_service, furnishing |
+| `utilities` | electricity, internet_broadband, mobile_phone |
+| `health` | medicines, doctor_consultation, fitness_gym |
+| `education` | books, courses, workshops, exam_fees |
+| `entertainment` | movies_events, streaming_subscriptions, outing |
+| `shopping` | clothing, electronics_gadgets, home_decor |
+| `travel` | flights, hotels, train_bus, visa_passport |
+| `investments` | mutual_funds, stocks, crypto, gold |
+| `subscriptions` | saas_tools, cloud_ai, music_video |
+| `personal_care` | salon_spa, grooming, cosmetics |
+| `family_kids` | school_fees, toys_games, events_birthdays |
+| `gifts_donations` | charity_donation, gifts_personal, festivals |
+| `finance_fees` | bank_charges, interest, brokerage |
+| `business` | hosting_domains, marketing_ads, contractor_payments |
+| `home` | household_supplies, kitchenware, pest_control |
+| `pet` | food, vet, grooming, supplies |
+| `taxes` | income_tax, gst, professional_tax |
+| `misc` | uncategorized, other |
+
+> You can freely add, remove, or rename categories by editing `categories.json`. No server restart needed.
+
+---
+
+## 🗄 Database Schema
+
+The SQLite database (`expenses.db`) uses a single table:
+
+```sql
+CREATE TABLE IF NOT EXISTS expenses (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    date        TEXT    NOT NULL,
+    amount      REAL    NOT NULL,
+    category    TEXT    NOT NULL,
+    subcategory TEXT    DEFAULT '',
+    note        TEXT    DEFAULT ''
+);
+```
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please follow these steps:
-
 1. Fork the repository
-2. Create a new branch: `git checkout -b feature/your-feature-name`
-3. Make your changes and commit: `git commit -m "Add your feature"`
-4. Push to your fork: `git push origin feature/your-feature-name`
+2. Create a branch: `git checkout -b feature/your-feature`
+3. Commit your changes: `git commit -m "Add your feature"`
+4. Push: `git push origin feature/your-feature`
 5. Open a Pull Request
-
-Please ensure your code follows the existing style and includes relevant tests.
-
----
-
-## 📄 License
-
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
 
 ---
 
@@ -269,4 +275,4 @@ This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) f
 
 ---
 
-> 💡 **Tip:** For best results, run this server alongside Claude.ai to enable intelligent, tool-augmented AI conversations with your own local data.
+> Built with [FastMCP](https://github.com/jlowin/fastmcp) · Powered by SQLite · Designed for Claude

@@ -15,8 +15,6 @@ A local **Model Context Protocol (MCP)** server built with [FastMCP](https://git
 - [Connecting to Claude](#connecting-to-claude)
 - [Tools & Resources](#tools--resources)
 - [Expense Categories](#expense-categories)
-- [Database Schema](#database-schema)
-- [Contributing](#contributing)
 
 ---
 
@@ -91,6 +89,51 @@ pip install fastmcp>=3.2.2
 
 ---
 
+## 🔧 Setup
+
+### Step 1: Get an API Key
+
+1. Visit [exchangerate-api.com](https://www.exchangerate-api.com/)
+2. Sign up for a free account
+3. Copy your API key from the dashboard
+
+### Step 2: Set Environment Variable
+
+#### On Linux/macOS:
+```bash
+export EXCHANGE_RATE_API_KEY="your_api_key_here"
+```
+
+#### On Windows (PowerShell):
+```powershell
+$env:EXCHANGE_RATE_API_KEY = "your_api_key_here"
+```
+
+#### Permanent Setup (Linux/macOS):
+Add to `~/.bashrc` or `~/.zshrc`:
+```bash
+export EXCHANGE_RATE_API_KEY="your_api_key_here"
+```
+
+#### Using .env File (Optional):
+Create `.env` file in project root:
+```env
+EXCHANGE_RATE_API_KEY=your_api_key_here
+```
+
+### Step 3: Verify Installation
+
+```bash
+# Reinstall dependencies (if needed)
+pip install -r requirements.txt
+# or
+pip install fastmcp requests python-dotenv
+
+# Run the test suite
+python3 test_currency_conversion.py
+```
+---
+
 ## 🚀 Running the Server
 
 ```bash
@@ -149,10 +192,18 @@ Add a new expense entry to the database.
 | `category` | `string` | ✅ | Main category (e.g., `food`, `transport`) |
 | `subcategory` | `string` | ❌ | Subcategory (e.g., `groceries`, `fuel`) |
 | `note` | `string` | ❌ | Optional description or note |
+| `original_currency` | `string` | ❌ | Original currency (default=USD) |
+| `usd_amount` | `REAL` | ❌ | Amount converted in USD |
 
 **Example response:**
 ```json
-{ "status": "ok", "id": 7 }
+{
+  "status": "ok",
+  "id": 123,
+  "original_amount": 50.0,
+  "original_currency": "EUR",
+  "usd_amount": 54.32
+}
 ```
 
 ---
@@ -171,11 +222,23 @@ List all expense entries within an inclusive date range.
 [
   {
     "id": 1,
-    "date": "2026-04-01",
-    "amount": 500.0,
+    "date": "2024-01-15",
+    "amount": 50.0,
     "category": "food",
     "subcategory": "groceries",
-    "note": "Weekly shop"
+    "note": "Supermarket",
+    "original_currency": "EUR",
+    "usd_amount": 54.32
+  },
+  {
+    "id": 2,
+    "date": "2024-01-16",
+    "amount": 100.0,
+    "category": "food",
+    "subcategory": "dining_out",
+    "note": "Restaurant",
+    "original_currency": "USD",
+    "usd_amount": 100.0
   }
 ]
 ```
@@ -195,8 +258,16 @@ Get a category-wise total of expenses within a date range.
 **Example response:**
 ```json
 [
-  { "category": "food", "total_amount": 1850.0 },
-  { "category": "transport", "total_amount": 640.0 }
+  {
+    "category": "food",
+    "total_amount": 3100.0,
+    "original_currency": "USD"
+  },
+  {
+    "category": "transport",
+    "total_amount": 50.0,
+    "original_currency": "EUR"
+  }
 ]
 ```
 
@@ -241,23 +312,6 @@ The server supports **20 top-level categories**, each with subcategories:
 
 ---
 
-## 🗄 Database Schema
-
-The SQLite database (`expenses.db`) uses a single table:
-
-```sql
-CREATE TABLE IF NOT EXISTS expenses (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    date        TEXT    NOT NULL,
-    amount      REAL    NOT NULL,
-    category    TEXT    NOT NULL,
-    subcategory TEXT    DEFAULT '',
-    note        TEXT    DEFAULT ''
-);
-```
-
----
-
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -268,11 +322,7 @@ CREATE TABLE IF NOT EXISTS expenses (
 
 ---
 
-## 👤 Author
+## 👤 Foked from
 
 **Anamika**
 - GitHub: [@anamika-1520](https://github.com/anamika-1520)
-
----
-
-> Built with [FastMCP](https://github.com/jlowin/fastmcp) · Powered by SQLite · Designed for Claude

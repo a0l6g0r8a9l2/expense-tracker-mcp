@@ -15,7 +15,6 @@ This script tests:
 """
 
 import os
-import json
 import sqlite3
 from datetime import datetime, timedelta
 
@@ -26,7 +25,7 @@ from main import (
     summarize,
     DB_PATH,
     get_exchange_rate,
-    convert_to_usd
+    convert_currency
 )
 
 def test_exchange_rates():
@@ -114,12 +113,6 @@ def test_summarize():
         total = row['total_amount']
         print(f"   {row['category']:<15} {total:>10.2f} {currency}")
     
-    print("\n2. By Category (Converted to USD):")
-    result = summarize("2020-01-01", "2030-12-31", convert_to_usd_flag=True)
-    for row in result:
-        total = row['total_usd_amount']
-        print(f"   {row['category']:<15} {total:>10.2f} USD")
-    
     print("\n3. Specific Category (food):")
     result = summarize("2020-01-01", "2030-12-31", category="food")
     for row in result:
@@ -189,7 +182,6 @@ def main():
     print("  • Database schema: ✓ Updated with currency fields")
     print("  • add_expense(): ✓ Accepts currency parameter, converts to USD")
     print("  • list_expenses(): ✓ Returns original currency and USD amounts")
-    print("  • summarize(): ✓ Supports USD conversion flag")
     print("  • Error handling: ✓ Graceful degradation when API unavailable")
     print("\n📚 Documentation: See README.md for usage examples")
     print("🔑 To enable real currency conversion:")

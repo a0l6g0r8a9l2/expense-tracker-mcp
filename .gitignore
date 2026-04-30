@@ -1,5 +1,13 @@
 .env
-expenses.dbs
 __pycache__/
 .venv/
 .vscode/
+expenses.db
+.pytest_cache/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.coverage
+htmlcov/
